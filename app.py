@@ -1,76 +1,63 @@
-import gradio as gr
+import streamlit as st
 import pickle
 import pandas as pd
 
-# Load the trained Linear Regression model
-with open('model.pkl', 'rb') as file:
-    model = pickle.load(file)
+# Load the trained model only once to save memory
+@st.cache_resource
+def load_model():
+    with open('model.pkl', 'rb') as file:
+        return pickle.load(file)
 
-def predict_price(area, bedrooms, bathrooms, stories, parking, guestroom, basement, airconditioning, furnishingstatus):
-    try:
-        # SAFETY CHECK: Ensure no fields are left blank
-        inputs_list = [area, bedrooms, bathrooms, stories, parking, guestroom, basement, airconditioning, furnishingstatus]
-        if "" in inputs_list or None in inputs_list:
-            return "⚠️ Error: Please fill out all fields before calculating!"
+model = load_model()
 
-        # Convert "Furnished" / "Unfurnished" to 0 or 1
-        is_unfurnished = 1 if furnishingstatus == 'Unfurnished' else 0
-        
-        # Convert "Yes" / "No" strings to 1 or 0 for the model
-        yes_no_map = {"Yes": 1, "No": 0}
-        
-        # Create a dictionary, explicitly converting the text inputs into numbers
-        input_features = {
-            'area': float(area),
-            'bedrooms': int(bedrooms),
-            'bathrooms': int(bathrooms),
-            'stories': int(stories),
-            'guestroom': yes_no_map[guestroom], 
-            'basement': yes_no_map[basement],   
-            'airconditioning': yes_no_map[airconditioning], 
-            'parking': int(parking),
-            'furnishingstatus_unfurnished': is_unfurnished
-        }
+# Build the UI
+st.title("🏠 House Price Predictor")
+st.write("Enter the property details below to predict its market value.")
 
-        # Convert to a pandas DataFrame
-        df = pd.DataFrame([input_features])
+# Create input fields
+col1, col2 = st.columns(2)
 
-        # Predict the price
-        prediction = model.predict(df)[0]
+with col1:
+    area = st.number_input("Area (sq ft)", min_value=0.0, value=0.0, step=10.0)
+    bedrooms = st.number_input("Bedrooms", min_value=0, value=0, step=1)
+    bathrooms = st.number_input("Bathrooms", min_value=0, value=0, step=1)
+    stories = st.number_input("Stories", min_value=0, value=0, step=1)
+    parking = st.number_input("Parking Spaces", min_value=0, value=0, step=1)
 
-        # Format the output as a clean currency string
-        return f"${round(prediction, 2):,}"
-        
-    except ValueError:
-        return "⚠️ Error: Please ensure you only type numbers (no letters) in the text boxes!"
-    except Exception as e:
-        return f"Error: {str(e)}"
+with col2:
+    guestroom = st.radio("Guestroom", ["No", "Yes"])
+    basement = st.radio("Basement", ["No", "Yes"])
+    airconditioning = st.radio("Air Conditioning", ["No", "Yes"])
+    furnishingstatus = st.radio("Furnishing Status", ["Furnished", "Unfurnished"])
 
-# Define inputs using Textbox instead of Number to force them to be blank
-inputs = [
-    gr.Textbox(label="Area (sq ft)"),
-    gr.Textbox(label="Bedrooms"),
-    gr.Textbox(label="Bathrooms"),
-    gr.Textbox(label="Stories"),
-    gr.Textbox(label="Parking Spaces"),
-    gr.Radio(choices=["No", "Yes"], label="Guestroom"),
-    gr.Radio(choices=["No", "Yes"], label="Basement"),
-    gr.Radio(choices=["No", "Yes"], label="Air Conditioning"),
-    gr.Radio(choices=["Furnished", "Unfurnished"], label="Furnishing Status")
-]
+# Calculate Button
+if st.button("Calculate Price", type="primary"):
+    # Safety check
+    if area == 0 or bedrooms == 0 or bathrooms == 0:
+        st.warning("⚠️ Please fill out the Area, Bedrooms, and Bathrooms to get an accurate prediction.")
+    else:
+        try:
+            # Data conversion
+            is_unfurnished = 1 if furnishingstatus == 'Unfurnished' else 0
+            yes_no_map = {"Yes": 1, "No": 0}
+            
+            input_features = {
+                'area': area,
+                'bedrooms': bedrooms,
+                'bathrooms': bathrooms,
+                'stories': stories,
+                'guestroom': yes_no_map[guestroom], 
+                'basement': yes_no_map[basement],   
+                'airconditioning': yes_no_map[airconditioning], 
+                'parking': parking,
+                'furnishingstatus_unfurnished': is_unfurnished
+            }
 
-# Define the output component
-output = gr.Text(label="Predicted Price", show_label=True)
-
-# Create the Gradio interface
-demo = gr.Interface(
-    fn=predict_price,
-    inputs=inputs,
-    outputs=output,
-    title="🏠 House Price Predictor",
-    description="Enter the property details below to predict its market value."
-)
-
-# Launch the app
-if __name__ == '__main__':
-    demo.launch()
+            df = pd.DataFrame([input_features])
+            prediction = model.predict(df)[0]
+            
+            # Display result
+            st.success(f"**Predicted Price: ${prediction:,.2f}**")
+            
+        except Exception as e:
+            st.error(f"Error: {str(e)}")
