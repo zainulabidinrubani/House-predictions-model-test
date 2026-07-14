@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>House Price Predictor</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4f7f6;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+        }
+        .container {
+            background-color: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            width: 100%;
+            max-width: 500px;
+        }
+        h2 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 20px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #555;
+        }
+        input[type="number"], select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            box-sizing: border-box;
+        }
+        button {
+            width: 100%;
+            padding: 12px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            margin-top: 10px;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        #result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 5px;
+            text-align: center;
+            font-size: 18px;
+            font-weight: bold;
+            display: none;
+        }
+        .success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>House Price Predictor</h2>
+    <form id="predictionForm">
+        
+        <div class="form-group">
+            <label for="area">Area (sq ft):</label>
+            <input type="number" id="area" name="area" required placeholder="e.g., 7420">
+        </div>
+
+        <div class="form-group">
+            <label for="bedrooms">Bedrooms:</label>
+            <input type="number" id="bedrooms" name="bedrooms" required placeholder="e.g., 4">
+        </div>
+
+        <div class="form-group">
+            <label for="bathrooms">Bathrooms:</label>
+            <input type="number" id="bathrooms" name="bathrooms" required placeholder="e.g., 2">
+        </div>
+
+        <div class="form-group">
+            <label for="stories">Stories:</label>
+            <input type="number" id="stories" name="stories" required placeholder="e.g., 2">
+        </div>
+
+        <div class="form-group">
+            <label for="parking">Parking Spaces:</label>
+            <input type="number" id="parking" name="parking" required placeholder="e.g., 1">
+        </div>
+
+        <div class="form-group">
+            <label for="guestroom">Guestroom:</label>
+            <select id="guestroom" name="guestroom">
+                <option value="0">No</option>
+                <option value="1">Yes</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label for="basement">Basement:</label>
+            <select id="basement" name="basement">
+                <option value="0">No</option>
+                <option value="1">Yes</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label for="airconditioning">Air Conditioning:</label>
+            <select id="airconditioning" name="airconditioning">
+                <option value="0">No</option>
+                <option value="1">Yes</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label for="furnishingstatus">Furnishing Status:</label>
+            <select id="furnishingstatus" name="furnishingstatus">
+                <option value="furnished">Furnished</option>
+                <option value="unfurnished">Unfurnished</option>
+            </select>
+        </div>
+
+        <button type="submit">Predict Price</button>
+    </form>
+
+    <div id="result"></div>
+</div>
+
+<script>
+    document.getElementById('predictionForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+
+        const resultDiv = document.getElementById('result');
+        resultDiv.style.display = 'block';
+        resultDiv.className = '';
+        resultDiv.innerText = 'Calculating...';
+
+        const formData = {
+            area: document.getElementById('area').value,
+            bedrooms: document.getElementById('bedrooms').value,
+            bathrooms: document.getElementById('bathrooms').value,
+            stories: document.getElementById('stories').value,
+            parking: document.getElementById('parking').value,
+            guestroom: document.getElementById('guestroom').value,
+            basement: document.getElementById('basement').value,
+            airconditioning: document.getElementById('airconditioning').value,
+            furnishingstatus: document.getElementById('furnishingstatus').value
+        };
+
+        try {
+            const response = await fetch('http://127.0.0.1:5000/predict', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(formData)
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                resultDiv.className = 'success';
+                resultDiv.innerText = `Predicted Price: $${data.predicted_price.toLocaleString()}`;
+            } else {
+                resultDiv.className = 'error';
+                resultDiv.innerText = `Error: ${data.error}`;
+            }
+        } catch (error) {
+            resultDiv.className = 'error';
+            resultDiv.innerText = 'Failed to connect to the server. Make sure the Flask API is running.';
+            console.error('Error:', error);
+        }
+    });
+</script>
+
+</body>
+</html>
